@@ -1,0 +1,52 @@
+version: '3'
+
+services:
+  backend:
+    container_name: 'percent-backend-opti'
+    build:
+      context: backend
+      dockerfile: Dockerfile
+    image: backend-compose-percent-opti
+    restart: always
+    ports:
+      - '4000:3000'
+    env_file: .env
+    networks:
+      - internal
+  
+  frontend:
+    container_name: 'percent-frontend-opti'
+    build:
+      context: frontend
+      dockerfile: Dockerfile
+    image: frontend-compose-percent-opti
+    restart: always
+    ports:
+      - '8080:80'
+    networks:
+      - external
+
+  postgres:
+    container_name: 'postgres'
+    image: postgres:alpine
+    env_file: .env
+    restart: always
+    volumes:
+      - pg_data:/data/postgres
+    networks:
+      - internal
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8081:8080
+    networks:
+      - internal
+
+volumes:
+  pg_data:
+
+networks:
+  internal:
+  external:
