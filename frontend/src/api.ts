@@ -1,4 +1,4 @@
-const baseUrl = 'http://localhost:4000/';
+const baseUrl = 'https://api.mentor.nomoredomains.monster/';
 
 export const getRandomPercent = async () => {
   const response = await fetch(baseUrl);
