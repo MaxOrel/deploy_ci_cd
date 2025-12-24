@@ -1,0 +1,104 @@
+version: '3.8'
+
+services:
+  backend:
+    container_name: backend-staging
+    image: ${DOCKER_REGISTRY:-maxorel}/backend-compose-optimized:${IMAGE_TAG:-latest}
+    ports:
+      - "${BACKEND_PORT:-4000}:3000"
+    environment:
+      - NODE_ENV=staging
+      - POSTGRES_HOST=postgres-staging
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - TYPEORM_SYNC=${TYPEORM_SYNC:-1}
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - staging-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  frontend:
+    container_name: frontend-staging
+    image: ${DOCKER_REGISTRY:-maxorel}/frontend-compose-optimized:${IMAGE_TAG:-latest}
+    restart: unless-stopped
+    ports:
+      - "${FRONTEND_PORT:-9000}:80"
+    depends_on:
+      - backend
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    networks:
+      - staging-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  postgres:
+    container_name: postgres-staging
+    image: postgres:14-alpine
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB:-postgres}
+      - POSTGRES_USER=${POSTGRES_USER:-postgres}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - PGDATA=/var/lib/postgresql/data
+    restart: unless-stopped
+    volumes:
+      - postgres_staging_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - staging-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  adminer:
+    container_name: adminer-staging
+    image: adminer:latest
+    ports:
+      - "${ADMINER_PORT:-9001}:8080"
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    networks:
+      - staging-network
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  postgres_staging_data:
+    name: postgres_staging_data
+
+networks:
+  staging-network:
+    name: staging-network
+    driver: bridge

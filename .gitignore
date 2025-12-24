@@ -43,3 +43,36 @@ logs
 !.vscode/tasks.json
 !.vscode/launch.json
 !.vscode/extensions.json
+
+# Environment files (keep only .env.example)
+.env
+.env.*
+!.env.example
+
+# Deployment files
+.env.staging
+.env.production
+deploy-*.log
+
+# SSH Keys (never commit!)
+*.pem
+*.key
+id_rsa
+id_ed25519
+*_rsa
+*_ed25519
+
+# Backups
+*.sql
+*.sql.gz
+*.dump
+backups/
+
+# Docker
+docker-compose.override.yml
+
+# Secrets and credentials
+secrets/
+credentials/
+*.secret
+*.credentials

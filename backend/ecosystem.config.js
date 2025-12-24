@@ -1,8 +1,8 @@
 module.exports = {
-	apps: [
-		{
-			name: 'demo-backend',
-			script: 'dist/main.js'
-		}
-	]
-}
+  apps: [
+    {
+      name: 'demo-backend',
+      script: 'dist/main.js',
+    },
+  ],
+};

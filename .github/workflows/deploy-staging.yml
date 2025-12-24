@@ -1,0 +1,220 @@
+name: Deploy to Staging
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches: [main]
+
+env:
+  DOCKER_REGISTRY: ${{ secrets.DOCKER_HUB_USERNAME }}
+  IMAGE_TAG: pr-${{ github.event.pull_request.number }}
+
+jobs:
+  build-and-push:
+    name: Build & Push Docker Images
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and push backend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile.pub
+          push: true
+          tags: |
+            ${{ env.DOCKER_REGISTRY }}/backend-compose-optimized:${{ env.IMAGE_TAG }}
+            ${{ env.DOCKER_REGISTRY }}/backend-compose-optimized:staging-latest
+          cache-from: type=registry,ref=${{ env.DOCKER_REGISTRY }}/backend-compose-optimized:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/backend-compose-optimized:buildcache,mode=max
+          platforms: linux/amd64
+
+      - name: Build and push frontend image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile.pub
+          push: true
+          tags: |
+            ${{ env.DOCKER_REGISTRY }}/frontend-compose-optimized:${{ env.IMAGE_TAG }}
+            ${{ env.DOCKER_REGISTRY }}/frontend-compose-optimized:staging-latest
+          cache-from: type=registry,ref=${{ env.DOCKER_REGISTRY }}/frontend-compose-optimized:buildcache
+          cache-to: type=registry,ref=${{ env.DOCKER_REGISTRY }}/frontend-compose-optimized:buildcache,mode=max
+          platforms: linux/amd64
+          build-args: |
+            REACT_APP_API_URL=${{ secrets.STAGING_API_URL }}
+
+  deploy-staging:
+    name: Deploy to Staging Server
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    environment:
+      name: staging
+      url: ${{ secrets.STAGING_FRONTEND_URL }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Create .env.staging file
+        run: |
+          cat > .env.staging << EOF
+          # PostgreSQL Configuration
+          POSTGRES_HOST=postgres-staging
+          POSTGRES_PORT=5432
+          POSTGRES_DB=${{ secrets.STAGING_POSTGRES_DB }}
+          POSTGRES_USER=${{ secrets.STAGING_POSTGRES_USER }}
+          POSTGRES_PASSWORD=${{ secrets.STAGING_POSTGRES_PASSWORD }}
+          PGDATA=/var/lib/postgresql/data
+
+          # Ports Configuration
+          BACKEND_PORT=${{ secrets.STAGING_BACKEND_PORT }}
+          FRONTEND_PORT=${{ secrets.STAGING_FRONTEND_PORT }}
+          ADMINER_PORT=${{ secrets.STAGING_ADMINER_PORT }}
+
+          # Docker Configuration
+          DOCKER_REGISTRY=${{ env.DOCKER_REGISTRY }}
+          IMAGE_TAG=${{ env.IMAGE_TAG }}
+
+          # Application Configuration
+          NODE_ENV=staging
+          TYPEORM_SYNC=1
+          EOF
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.STAGING_SSH_KEY }}" > ~/.ssh/staging_key
+          chmod 600 ~/.ssh/staging_key
+          ssh-keyscan -H ${{ secrets.STAGING_SSH_HOST }} >> ~/.ssh/known_hosts
+
+      - name: Copy files to staging server
+        run: |
+          scp -i ~/.ssh/staging_key \
+            -o StrictHostKeyChecking=no \
+            docker-compose.staging.yml \
+            .env.staging \
+            scripts/deploy-staging.sh \
+            ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }}:/home/deploy/staging/
+
+      - name: Deploy on staging server
+        run: |
+          ssh -i ~/.ssh/staging_key \
+            -o StrictHostKeyChecking=no \
+            ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }} \
+            "cd /home/deploy/staging && \
+             chmod +x deploy-staging.sh && \
+             export BACKEND_PORT=${{ secrets.STAGING_BACKEND_PORT }} && \
+             export FRONTEND_PORT=${{ secrets.STAGING_FRONTEND_PORT }} && \
+             export ADMINER_PORT=${{ secrets.STAGING_ADMINER_PORT }} && \
+             export POSTGRES_USER=${{ secrets.STAGING_POSTGRES_USER }} && \
+             ./deploy-staging.sh"
+
+      - name: Cleanup SSH key
+        if: always()
+        run: rm -f ~/.ssh/staging_key
+
+  notify-telegram:
+    name: Send Telegram Notification
+    runs-on: ubuntu-latest
+    needs: [build-and-push, deploy-staging]
+    if: always()
+
+    steps:
+      - name: Send success notification
+        if: needs.deploy-staging.result == 'success'
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ✅ *Staging Deployment Successful*
+
+            *PR:* #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}
+            *Author:* ${{ github.event.pull_request.user.login }}
+            *Branch:* `${{ github.head_ref }}`
+            *Commit:* `${{ github.sha }}`
+
+            *Environment:* Staging
+            *Image Tag:* `${{ env.IMAGE_TAG }}`
+
+            *URLs:*
+            🌐 Frontend: ${{ secrets.STAGING_FRONTEND_URL }}
+            🔧 Backend: ${{ secrets.STAGING_BACKEND_URL }}
+
+            [View PR](${{ github.event.pull_request.html_url }})
+
+      - name: Send failure notification
+        if: needs.deploy-staging.result == 'failure'
+        uses: appleboy/telegram-action@master
+        with:
+          to: ${{ secrets.TELEGRAM_CHAT_ID }}
+          token: ${{ secrets.TELEGRAM_BOT_TOKEN }}
+          format: markdown
+          message: |
+            ❌ *Staging Deployment Failed*
+
+            *PR:* #${{ github.event.pull_request.number }} - ${{ github.event.pull_request.title }}
+            *Author:* ${{ github.event.pull_request.user.login }}
+            *Branch:* `${{ github.head_ref }}`
+            *Commit:* `${{ github.sha }}`
+
+            *Environment:* Staging
+
+            [View Workflow Run](${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }})
+            [View PR](${{ github.event.pull_request.html_url }})
+
+  comment-on-pr:
+    name: Comment on Pull Request
+    runs-on: ubuntu-latest
+    needs: deploy-staging
+    if: needs.deploy-staging.result == 'success'
+
+    steps:
+      - name: Comment PR
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const prNumber = context.payload.pull_request.number;
+            const imageTag = 'pr-' + prNumber;
+
+            const comment = `## 🚀 Staging Deployment Successful
+
+            Your changes have been deployed to the staging environment!
+
+            ### 🔗 URLs
+            - **Frontend:** ${{ secrets.STAGING_FRONTEND_URL }}
+            - **Backend:** ${{ secrets.STAGING_BACKEND_URL }}
+            - **Adminer:** ${{ secrets.STAGING_ADMINER_URL }}
+
+            ### 🐳 Docker Images
+            - Backend: \`${{ env.DOCKER_REGISTRY }}/backend-compose-optimized:${imageTag}\`
+            - Frontend: \`${{ env.DOCKER_REGISTRY }}/frontend-compose-optimized:${imageTag}\`
+
+            ### 📝 Testing Instructions
+            1. Test your changes on the staging environment
+            2. Verify all functionality works as expected
+            3. Once approved, this PR can be merged to trigger production deployment
+
+            ---
+            *Deployed from commit: ${context.sha.substring(0, 7)}*`;
+
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: prNumber,
+              body: comment
+            });
