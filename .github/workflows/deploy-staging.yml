@@ -115,6 +115,8 @@ jobs:
             ${{ secrets.STAGING_SSH_USER }}@${{ secrets.STAGING_SSH_HOST }} \
             "cd /home/deploy/staging && \
              chmod +x deploy-staging.sh && \
+             export DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }} && \
+             export DOCKER_HUB_TOKEN=${{ secrets.DOCKER_HUB_TOKEN }} && \
              export BACKEND_PORT=${{ secrets.STAGING_BACKEND_PORT }} && \
              export FRONTEND_PORT=${{ secrets.STAGING_FRONTEND_PORT }} && \
              export ADMINER_PORT=${{ secrets.STAGING_ADMINER_PORT }} && \

@@ -63,6 +63,14 @@ if docker ps | grep -q postgres-production; then
     fi
 fi
 
+# Login to Docker Hub (required for private repositories)
+if [ -n "$DOCKER_HUB_USERNAME" ] && [ -n "$DOCKER_HUB_TOKEN" ]; then
+    print_info "Logging in to Docker Hub..."
+    echo "$DOCKER_HUB_TOKEN" | docker login -u "$DOCKER_HUB_USERNAME" --password-stdin
+else
+    print_warning "Docker Hub credentials not provided. Pulling may fail for private repositories."
+fi
+
 # Pull latest images
 print_info "Pulling Docker images..."
 if ! docker compose -f "$COMPOSE_FILE" pull; then
