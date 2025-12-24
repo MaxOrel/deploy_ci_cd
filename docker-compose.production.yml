@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   backend:
     image: ${DOCKER_REGISTRY:-maxorel}/backend-compose-optimized:${IMAGE_TAG:-latest}

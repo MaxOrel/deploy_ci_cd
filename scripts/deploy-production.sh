@@ -73,41 +73,35 @@ fi
 
 # Pull latest images
 print_info "Pulling Docker images..."
-if ! docker compose -f "$COMPOSE_FILE" pull; then
+if ! docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" pull; then
     print_error "Failed to pull Docker images"
     exit 1
 fi
 
-# Store current container IDs for potential rollback
-print_info "Saving current container state..."
-docker compose -f "$COMPOSE_FILE" ps -q > "$BACKUP_DIR/containers.$TIMESTAMP" || true
+# Stop and remove old containers
+print_info "Stopping existing containers..."
+docker compose -f "$COMPOSE_FILE" down --remove-orphans || true
 
-# Perform rolling update with zero-downtime strategy
-print_info "Performing rolling update..."
-
-# Safely update backend container
-print_info "Updating backend container safely..."
-
-# Stop and remove old backend container
-docker compose -f "$COMPOSE_FILE" stop backend || true
-docker compose -f "$COMPOSE_FILE" rm -f backend || true
-
-# Start new backend container
-docker compose -f "$COMPOSE_FILE" up -d --no-deps backend || {
-    print_error "Failed to start backend container"
+# Start new containers
+print_info "Starting new containers..."
+if ! docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d; then
+    print_error "Failed to start containers"
     exit 1
-}
-# Wait for new backend to be healthy
-print_info "Waiting for new backend to be healthy..."
+fi
+
+# Wait for services to be healthy
+print_info "Waiting for services to be healthy..."
 sleep 15
 
+# Health check for backend
+print_info "Checking backend health..."
 BACKEND_PORT=${BACKEND_PORT:-4000}
 MAX_RETRIES=30
 RETRY_COUNT=0
 
 while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
     if curl -f -s "http://localhost:${BACKEND_PORT}/health" > /dev/null 2>&1; then
-        print_info "New backend is healthy!"
+        print_info "Backend is healthy!"
         break
     fi
     RETRY_COUNT=$((RETRY_COUNT + 1))
@@ -116,64 +110,31 @@ while [ $RETRY_COUNT -lt $MAX_RETRIES ]; do
 done
 
 if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
-    print_error "New backend health check failed"
-    print_error "Rolling back..."
-    docker compose -f "$COMPOSE_FILE" up -d --scale backend=1 backend
+    print_error "Backend health check failed after ${MAX_RETRIES} attempts"
+    print_warning "Checking container logs..."
+    docker compose -f "$COMPOSE_FILE" logs --tail=50 backend
     exit 1
 fi
 
-# Scale down to single backend instance
-print_info "Removing old backend container..."
-docker compose -f "$COMPOSE_FILE" up -d --scale backend=1 --no-deps backend
-
-# Update frontend
-print_info "Updating frontend..."
-docker compose -f "$COMPOSE_FILE" up -d --no-deps frontend
-
-# Wait for frontend to be healthy
+# Health check for frontend
 print_info "Checking frontend health..."
-sleep 10
-
 FRONTEND_PORT=${FRONTEND_PORT:-9000}
 if curl -f -s "http://localhost:${FRONTEND_PORT}" > /dev/null 2>&1; then
     print_info "Frontend is healthy!"
 else
-    print_warning "Frontend health check failed"
+    print_warning "Frontend health check failed, but continuing..."
 fi
-
-# Ensure all services are running
-print_info "Ensuring all services are running..."
-docker compose -f "$COMPOSE_FILE" up -d
 
 # Remove dangling images to free up space
 print_info "Cleaning up old Docker images..."
 docker image prune -f || true
 
-# Final health checks
-print_info "Performing final health checks..."
-sleep 5
-
-# Backend final check
-if curl -f -s "http://localhost:${BACKEND_PORT}/health" > /dev/null 2>&1; then
-    print_info "✓ Backend is healthy"
-else
-    print_error "✗ Backend health check failed"
-    docker compose -f "$COMPOSE_FILE" logs --tail=50 backend
-    exit 1
-fi
-
-# Frontend final check
-if curl -f -s "http://localhost:${FRONTEND_PORT}" > /dev/null 2>&1; then
-    print_info "✓ Frontend is healthy"
-else
-    print_warning "✗ Frontend health check failed"
-fi
-
-# Database check
+# Database health check
+print_info "Checking database health..."
 if docker exec postgres-production pg_isready -U ${POSTGRES_USER:-postgres} > /dev/null 2>&1; then
-    print_info "✓ Database is healthy"
+    print_info "Database is healthy!"
 else
-    print_error "✗ Database health check failed"
+    print_warning "Database health check failed"
 fi
 
 # Show running containers
