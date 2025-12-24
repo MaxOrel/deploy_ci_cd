@@ -4,6 +4,8 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import Percent from './percent/entity/percent.entity';
 import { PercentModule } from './percent/percent.module';
+import { HealthModule } from './health/health.module';
+
 
 const {
   POSTGRES_HOST = 'localhost',
@@ -27,6 +29,7 @@ const {
       synchronize: !!TYPEORM_SYNC,
     }),
     PercentModule,
+    HealthModule,
   ],
   controllers: [AppController],
   providers: [AppService],
