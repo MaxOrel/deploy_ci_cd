@@ -61,7 +61,7 @@ jobs:
     needs: build-and-push
     environment:
       name: staging
-      url: ${{ secrets.STAGING_FRONTEND_URL }}
+      url: https://stage.nomoredomainswork.ru
 
     steps:
       - name: Checkout code
