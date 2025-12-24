@@ -85,13 +85,18 @@ docker compose -f "$COMPOSE_FILE" ps -q > "$BACKUP_DIR/containers.$TIMESTAMP" ||
 # Perform rolling update with zero-downtime strategy
 print_info "Performing rolling update..."
 
-# Start new backend container with different name
-print_info "Starting new backend container..."
-docker compose -f "$COMPOSE_FILE" up -d --no-deps --scale backend=2 backend || {
-    print_error "Failed to start new backend container"
+# Safely update backend container
+print_info "Updating backend container safely..."
+
+# Stop and remove old backend container
+docker compose -f "$COMPOSE_FILE" stop backend || true
+docker compose -f "$COMPOSE_FILE" rm -f backend || true
+
+# Start new backend container
+docker compose -f "$COMPOSE_FILE" up -d --no-deps backend || {
+    print_error "Failed to start backend container"
     exit 1
 }
-
 # Wait for new backend to be healthy
 print_info "Waiting for new backend to be healthy..."
 sleep 15

@@ -2,6 +2,7 @@ name: Deploy to Production
 
 permissions:
   issues: write
+  pull-requests: write
   
 
 on:
