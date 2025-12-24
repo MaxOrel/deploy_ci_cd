@@ -1,5 +1,8 @@
 name: Deploy to Staging
 
+permissions:
+  issues: write
+
 on:
   pull_request:
     types: [opened, synchronize, reopened]
