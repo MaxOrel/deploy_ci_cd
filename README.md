@@ -141,7 +141,7 @@ See [.env.example](.env.example) for all available environment variables.
 
 ### GitHub Secrets Setup
 
-For CI/CD to work, you need to configure GitHub Secrets. See [DEPLOYMENT.md](DEPLOYMENT.md#настройка-github-secrets) for detailed instructions.
+For CI/CD to work, you need to configure GitHub Secrets. See [SETUP_GUIDE.md](SETUP_GUIDE.md#шаг-3-добавление-github-secrets) for detailed instructions.
 
 **Required Secrets:**
 - Docker Hub credentials
@@ -182,7 +182,7 @@ For CI/CD to work, you need to configure GitHub Secrets. See [DEPLOYMENT.md](DEP
 
 ### Quick Deployment Guide
 
-1. **Setup Servers:** Follow [DEPLOYMENT.md](DEPLOYMENT.md#настройка-серверов)
+1. **Setup Servers:** Follow [SETUP_GUIDE.md](SETUP_GUIDE.md)
 2. **Configure Secrets:** Add all required secrets to GitHub
 3. **Deploy to Staging:** Open a PR to `main`
 4. **Test:** Verify changes on staging environment
@@ -190,7 +190,7 @@ For CI/CD to work, you need to configure GitHub Secrets. See [DEPLOYMENT.md](DEP
 
 ### Detailed Guide
 
-See [DEPLOYMENT.md](DEPLOYMENT.md) for:
+See [SETUP_GUIDE.md](SETUP_GUIDE.md) for:
 - Complete setup instructions
 - Server configuration
 - CI/CD pipeline details
@@ -315,7 +315,7 @@ docker compose -f docker-compose.production.yml pull
 docker compose -f docker-compose.production.yml up -d
 ```
 
-See [DEPLOYMENT.md](DEPLOYMENT.md#rollback-откат-изменений) for detailed rollback procedures.
+See [SETUP_GUIDE.md](SETUP_GUIDE.md#troubleshooting) for detailed rollback procedures.
 
 ---
 
@@ -348,7 +348,7 @@ See [DEPLOYMENT.md](DEPLOYMENT.md#rollback-откат-изменений) for de
 
 ## 📚 Documentation
 
-- [DEPLOYMENT.md](DEPLOYMENT.md) - Complete deployment guide
+- [SETUP_GUIDE.md](SETUP_GUIDE.md) - Complete setup and deployment guide
 - [.env.example](.env.example) - Environment variables reference
 - [Backend README](./backend/README.md) - Backend documentation (if exists)
 - [Frontend README](./frontend/README.md) - Frontend documentation (if exists)
@@ -378,7 +378,7 @@ This project is part of Yandex Practicum educational materials.
 
 Having issues? Check:
 
-1. [DEPLOYMENT.md - Troubleshooting section](DEPLOYMENT.md#troubleshooting)
+1. [SETUP_GUIDE.md - Troubleshooting section](SETUP_GUIDE.md#troubleshooting)
 2. GitHub Actions logs
 3. Server logs: `docker compose logs`
 4. Create an issue in the repository
