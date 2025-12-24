@@ -1,9 +1,9 @@
 name: Deploy to Production
 
 permissions:
+  contents: write
   issues: write
   pull-requests: write
-  
 
 on:
   release:
@@ -210,8 +210,8 @@ jobs:
             *Environment:* Production 🔴
 
             *URLs:*
-            🌐 Frontend: ${{ secrets.PRODUCTION_FRONTEND_URL }}
-            🔧 Backend: ${{ secrets.PRODUCTION_BACKEND_URL }}
+            🌐 Frontend: https://prod.nomorepartiessbs.ru
+            🔧 Backend: https://api.prod.nomorepartiessbs.ru
 
             *Docker Images:*
             • Backend: `${{ env.DOCKER_REGISTRY }}/backend-compose-optimized:${{ env.IMAGE_TAG }}`
@@ -291,8 +291,8 @@ jobs:
             - Frontend: \`${{ env.DOCKER_REGISTRY }}/frontend-compose-optimized:${{ env.IMAGE_TAG }}\`
 
             **Production URLs:**
-            - Frontend: ${{ secrets.PRODUCTION_FRONTEND_URL }}
-            - Backend API: ${{ secrets.PRODUCTION_BACKEND_URL }}
+            - Frontend: https://prod.nomorepartiessbs.ru
+            - Backend API: https://api.prod.nomorepartiessbs.ru
             `;
 
             await github.rest.repos.updateRelease({
