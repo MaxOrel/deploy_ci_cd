@@ -18,7 +18,7 @@ const {
   imports: [
     TypeOrmModule.forRoot({
       type: 'postgres',
-      host: POSTGRES_HOST,
+      host: 'db_postgres',
       port: parseInt(POSTGRES_PORT, 10),
       username: POSTGRES_USER,
       password: POSTGRES_PASSWORD,

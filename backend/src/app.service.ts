@@ -13,4 +13,16 @@ export class AppService {
 
     return percentEntity.percent;
   }
+
+  async getHistory(limit: number) {
+    return this.percentService.getHistory(limit);
+  }
+
+  async getStatistics() {
+    return this.percentService.getStatistics();
+  }
+
+  async clearHistory() {
+    return this.percentService.deleteAll();
+  }
 }
