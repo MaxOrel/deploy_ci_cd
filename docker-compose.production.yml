@@ -2,7 +2,6 @@ version: '3.8'
 
 services:
   backend:
-    container_name: backend-production
     image: ${DOCKER_REGISTRY:-maxorel}/backend-compose-optimized:${IMAGE_TAG:-latest}
     ports:
       - "${BACKEND_PORT:-4000}:3000"
@@ -33,7 +32,6 @@ services:
         max-file: "5"
 
   frontend:
-    container_name: frontend-production
     image: ${DOCKER_REGISTRY:-maxorel}/frontend-compose-optimized:${IMAGE_TAG:-latest}
     restart: always
     ports:
