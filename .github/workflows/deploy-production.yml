@@ -1,5 +1,9 @@
 name: Deploy to Production
 
+permissions:
+  issues: write
+  
+
 on:
   release:
     types: [published]
@@ -88,7 +92,7 @@ jobs:
     needs: build-and-push
     environment:
       name: production
-      url: ${{ secrets.PRODUCTION_FRONTEND_URL }}
+      url: https://prod.nomorepartiessbs.ru
 
     steps:
       - name: Checkout code
@@ -144,6 +148,8 @@ jobs:
             ${{ secrets.PRODUCTION_SSH_USER }}@${{ secrets.PRODUCTION_SSH_HOST }} \
             "cd /home/deploy/production && \
              chmod +x deploy-production.sh && \
+             export DOCKER_HUB_USERNAME=${{ secrets.DOCKER_HUB_USERNAME }} && \
+             export DOCKER_HUB_TOKEN=${{ secrets.DOCKER_HUB_TOKEN }} && \
              export BACKEND_PORT=${{ secrets.PRODUCTION_BACKEND_PORT }} && \
              export FRONTEND_PORT=${{ secrets.PRODUCTION_FRONTEND_PORT }} && \
              export ADMINER_PORT=${{ secrets.PRODUCTION_ADMINER_PORT }} && \
