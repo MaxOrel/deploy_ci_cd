@@ -59,7 +59,7 @@ fi
 
 # Pull latest images
 print_info "Pulling Docker images..."
-if ! docker compose -f "$COMPOSE_FILE" pull; then
+if ! docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" pull; then
     print_error "Failed to pull Docker images"
     exit 1
 fi
@@ -74,7 +74,7 @@ docker image prune -f || true
 
 # Start new containers
 print_info "Starting new containers..."
-if ! docker compose -f "$COMPOSE_FILE" up -d; then
+if ! docker compose --env-file "$ENV_FILE" -f "$COMPOSE_FILE" up -d; then
     print_error "Failed to start containers"
     exit 1
 fi
